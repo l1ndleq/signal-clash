@@ -1,0 +1,292 @@
+{
+  "address": "7fgxvrdpcYMhqLZP9E1mFDQFmffE7ifALVdUm8owG5Lv",
+  "metadata": {
+    "name": "signal_clash_vault",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "deposit",
+      "docs": [
+        "A player deposits exactly the entry fee into the vault."
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_game_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "docs": [
+        "Create a per-game vault PDA. `game_id` is the app's short game id."
+      ],
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "string"
+        },
+        {
+          "name": "entry_fee",
+          "type": "u64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "max_players",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Authority settles the game: rake -> treasury, ranked winners paid by tier,",
+        "everything left over (unfilled places + dust) -> treasury.",
+        "",
+        "remaining_accounts = ranked winner accounts (1st, 2nd, 3rd), each writable."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "_game_id",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "GameIdTooLong",
+      "msg": "game id too long"
+    },
+    {
+      "code": 6001,
+      "name": "FeeTooHigh",
+      "msg": "fee too high"
+    },
+    {
+      "code": 6002,
+      "name": "FieldTooSmall",
+      "msg": "field too small"
+    },
+    {
+      "code": 6003,
+      "name": "AlreadySettled",
+      "msg": "already settled"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "unauthorized"
+    },
+    {
+      "code": 6005,
+      "name": "WrongTreasury",
+      "msg": "wrong treasury"
+    },
+    {
+      "code": 6006,
+      "name": "TooManyWinners",
+      "msg": "too many winners for this field"
+    },
+    {
+      "code": 6007,
+      "name": "Overflow",
+      "msg": "arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_players",
+            "type": "u8"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

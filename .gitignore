@@ -24,6 +24,13 @@
 .DS_Store
 *.pem
 
+# solana / anchor secrets & build artifacts
+treasury-devnet.json
+*-keypair.json
+anchor/target
+anchor/.anchor
+.anchor
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -39,3 +46,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# brainstorm session artifacts
+.superpowers/
