@@ -15,7 +15,7 @@
 import { GameEngine } from "./engine";
 import { BinancePriceFeed } from "./binancePriceFeed";
 import { MARKETS } from "./markets";
-import type { Market, Room } from "./types";
+import type { Direction, Market, Room } from "./types";
 import type { MagicBlockAdapter } from "@/lib/magicblock/types";
 import { decideBotMove, makeBotSeat } from "./bot";
 
@@ -44,6 +44,19 @@ export interface MatchView {
 const RESULT_PAUSE_MS = 1500;
 const COUNTDOWN_STEPS = [3, 2, 1];
 
+/**
+ * Optional on-chain mirror of this match (a MagicBlock Ephemeral Rollup
+ * session). Structural so `lib/game` stays free of Solana imports; the concrete
+ * impl is `MatchErSession`. Every call is best-effort — the controller never
+ * blocks gameplay on it.
+ */
+export interface MatchMirror {
+  start(): Promise<unknown>;
+  submitPrediction(direction: Direction, confidence: number): Promise<unknown>;
+  resolveRound(scoreDelta: number, newStreak: number): Promise<unknown>;
+  finish(): Promise<unknown>;
+}
+
 export class MatchController {
   private engine: GameEngine;
   private feed: BinancePriceFeed;
@@ -69,6 +82,7 @@ export class MatchController {
     private readonly adapter: MagicBlockAdapter,
     private readonly roomId: string,
     private readonly myWallet: string,
+    private readonly mirror?: MatchMirror,
   ) {
     this.market = adapter.getRoom(roomId)?.market ?? "SOL/USD";
     const cfg = MARKETS[this.market];
@@ -111,6 +125,10 @@ export class MatchController {
     const room = this.adapter.getRoom(this.roomId);
     if (!room) throw new Error("Room not found");
 
+    // Kick off the on-chain mirror (L1 create + delegate) concurrently so its
+    // wallet popup / confirmation overlaps the countdown rather than stalling it.
+    this.mirrorStep("start", () => this.mirror?.start());
+
     const seatsToFill = room.maxPlayers - Object.keys(room.players).length;
     for (let i = 0; i < seatsToFill; i++) {
       const bot = makeBotSeat(i);
@@ -143,6 +161,9 @@ export class MatchController {
       confidence,
     });
     await this.engine.lockPrediction(this.roomId, this.myWallet);
+    this.mirrorStep("submit", () =>
+      this.mirror?.submitPrediction(direction, Number(confidence)),
+    );
     this.emit();
   }
 
@@ -254,6 +275,16 @@ export class MatchController {
     }
 
     await this.engine.resolveCurrentRound(this.roomId, this.feed.current());
+
+    // Mirror my round outcome onto the ER (off-chain-scored delta + new streak).
+    const scored = this.adapter.getRoom(this.roomId);
+    const myDelta =
+      round.predictions.find((p) => p.player === this.myWallet)?.scoreDelta ?? 0;
+    const myStreak = scored?.players[this.myWallet]?.streak ?? 0;
+    this.mirrorStep("resolve", () =>
+      this.mirror?.resolveRound(myDelta, myStreak),
+    );
+
     this.phase = "round-resolved";
     this.roundEndsAt = null;
     this.emit();
@@ -269,9 +300,29 @@ export class MatchController {
     this.stopTimers();
     const { commitRef } = await this.engine.finalizeMatch(this.roomId);
     this.commitRef = commitRef;
+    this.mirrorStep("finish", () => this.mirror?.finish());
     this.phase = "finished";
     this.roundEndsAt = null;
     this.emit();
+  }
+
+  /** Run a best-effort on-chain mirror call; log the outcome, never throw. */
+  private mirrorStep(
+    label: string,
+    run: () => Promise<unknown> | undefined,
+  ): void {
+    const p = run();
+    if (!p) return;
+    void p
+      .then((res) => {
+        const r = res as { ok?: boolean; signature?: string; error?: string };
+        if (r?.ok === false) {
+          console.warn(`[ER ${label}] skipped: ${r.error}`);
+        } else if (r?.signature) {
+          console.info(`[ER ${label}] ${r.signature}`);
+        }
+      })
+      .catch((err) => console.warn(`[ER ${label}] error`, err));
   }
 
   private stopTimers(): void {

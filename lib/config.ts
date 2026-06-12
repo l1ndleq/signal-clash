@@ -107,5 +107,13 @@ export const MATCH_PROGRAM_ID =
 export const ER_ROUTER_ENDPOINT =
   process.env.NEXT_PUBLIC_ER_ROUTER ?? "https://devnet-router.magicblock.app";
 
+/**
+ * Mirror each match's running score onto the Ephemeral Rollup (create/delegate
+ * on L1, per-round writes gasless on the ER, final commit back to L1). Off by
+ * default: it adds a wallet popup at match start and is best-effort, so it's
+ * opt-in until validated end-to-end on devnet. Set NEXT_PUBLIC_ER_MIRROR=1.
+ */
+export const ER_MIRROR_ENABLED = process.env.NEXT_PUBLIC_ER_MIRROR === "1";
+
 export const lamports = (sol: number): number => Math.round(sol * LAMPORTS_PER_SOL);
 export const solFromLamports = (lp: number): number => lp / LAMPORTS_PER_SOL;
