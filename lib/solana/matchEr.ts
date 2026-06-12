@@ -59,7 +59,8 @@ export class MatchErSession {
   /** Ephemeral fee-payer for gasless ER writes (kept only for this match). */
   private readonly session = Keypair.generate();
   private readonly matchPda: PublicKey;
-  private delegated = false;
+  /** Resolves once create+delegate has confirmed; ER writes await it. */
+  private startPromise?: Promise<ErStepResult>;
 
   constructor(
     private readonly gameId: string,
@@ -83,6 +84,11 @@ export class MatchErSession {
    * this resolves, round writes route to the rollup.
    */
   async start(): Promise<ErStepResult> {
+    this.startPromise = this.runStart();
+    return this.startPromise;
+  }
+
+  private async runStart(): Promise<ErStepResult> {
     try {
       const tx = new Transaction().add(
         buildCreateMatchIx({
@@ -97,7 +103,6 @@ export class MatchErSession {
       tx.recentBlockhash = blockhash;
       const signature = await this.walletSend(tx, this.l1);
       await this.l1.confirmTransaction(signature, "confirmed");
-      this.delegated = true;
       return { ok: true, signature };
     } catch (err) {
       return { ok: false, error: describe(err) };
@@ -119,17 +124,17 @@ export class MatchErSession {
   }
 
   /** ER, session-signed: commit the final score to L1 and undelegate. */
-  async finish(): Promise<ErStepResult> {
-    const res = await this.sendOnEr(
+  finish(): Promise<ErStepResult> {
+    return this.sendOnEr(
       buildFinishIx({ gameId: this.gameId, payer: this.session.publicKey }),
     );
-    if (res.ok) this.delegated = false;
-    return res;
   }
 
   /** Build, sign with the session key, and route a single-ix ER transaction. */
   private async sendOnEr(ix: TransactionInstruction): Promise<ErStepResult> {
-    if (!this.delegated) {
+    // Wait for create+delegate to confirm so early-round writes don't race it.
+    const started = this.startPromise ? await this.startPromise : undefined;
+    if (!started?.ok) {
       return { ok: false, error: "match not delegated to ER" };
     }
     try {
