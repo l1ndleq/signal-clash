@@ -56,7 +56,7 @@ interface LobbyState {
     entryFeeSol: number,
     field: number,
     rounds: number,
-    startsInSec: number,
+    startsAtMs: number,
     roundDurationSeconds: number,
   ) => Promise<string>;
   joinRoom: (roomId: string, wallet: string) => Promise<void>;
@@ -112,7 +112,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     entryFeeSol,
     field,
     rounds,
-    startsInSec,
+    startsAtMs,
     roundDurationSeconds,
   ) => {
     const room = await lobbyEngine.createRoom({
@@ -123,7 +123,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       maxPlayers: field,
       totalRounds: rounds,
       roundDurationSeconds,
-      startsAt: Date.now() + startsInSec * 1000,
+      startsAt: startsAtMs,
     });
     get().refresh();
     return room.id;

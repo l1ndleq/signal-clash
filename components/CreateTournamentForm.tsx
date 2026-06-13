@@ -1,30 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BadgeDollarSign, Clock3, Radio, Timer, Trophy, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   ENTRY_FEE_PRESETS_SOL,
   DEFAULT_TOURNAMENT_FIELD,
-  DEFAULT_TOURNAMENT_START_SEC,
   MAX_ENTRY_FEE_SOL,
   MIN_ENTRY_FEE_SOL,
   ROUND_DURATION_OPTIONS,
   ROUND_DURATION_SECONDS,
   TOURNAMENT_FIELD_OPTIONS,
   TOURNAMENT_ROUND_OPTIONS,
-  TOURNAMENT_START_OPTIONS_SEC,
 } from "@/lib/config";
 import { computePrizeBreakdown } from "@/lib/game/tournament";
 import { lamports, solFromLamports } from "@/lib/config";
 import { MARKET_LIST } from "@/lib/game/markets";
 import type { Market } from "@/lib/game/types";
 
-const START_LABEL: Record<number, string> = {
-  60: "1 min",
-  180: "3 min",
-  300: "5 min",
-};
+/** Format a Date as a `datetime-local` value string in the user's timezone. */
+function toLocalInputValue(d: Date): string {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
 
 export default function CreateTournamentForm({
   disabled,
@@ -36,7 +34,7 @@ export default function CreateTournamentForm({
     entryFeeSol: number,
     field: number,
     rounds: number,
-    startsInSec: number,
+    startsAtMs: number,
     roundSeconds: number,
   ) => void;
 }) {
@@ -44,12 +42,23 @@ export default function CreateTournamentForm({
   const [fee, setFee] = useState<number>(ENTRY_FEE_PRESETS_SOL[0]);
   const [field, setField] = useState<number>(DEFAULT_TOURNAMENT_FIELD);
   const [rounds, setRounds] = useState<number>(TOURNAMENT_ROUND_OPTIONS[1]);
-  const [startsInSec, setStartsInSec] = useState<number>(
-    DEFAULT_TOURNAMENT_START_SEC,
+  // Default the start to 5 minutes from now, editable as an exact date + time.
+  const [startAt, setStartAt] = useState<string>(() =>
+    toLocalInputValue(new Date(Date.now() + 5 * 60_000)),
   );
   const [roundSeconds, setRoundSeconds] = useState<number>(
     ROUND_DURATION_SECONDS,
   );
+  // Live clock so the "in the future" check stays accurate without calling
+  // Date.now() during render (React Compiler purity).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const startsAtMs = new Date(startAt).getTime();
+  const startValid = Number.isFinite(startsAtMs) && startsAtMs > now;
 
   const feeValid =
     Number.isFinite(fee) && fee >= MIN_ENTRY_FEE_SOL && fee <= MAX_ENTRY_FEE_SOL;
@@ -66,8 +75,8 @@ export default function CreateTournamentForm({
         </div>
         <h3 className="mt-4 font-display text-3xl font-bold">Schedule a clash</h3>
         <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
-          Set the field, rounds, and a start timer. Top 3 split the pool 50 / 30
-          / 20 after a 3% platform rake.
+          Set the field, rounds, and an exact start date and time. Top 3 split
+          the pool 50 / 30 / 20 after a 3% platform rake.
         </p>
       </div>
 
@@ -131,19 +140,22 @@ export default function CreateTournamentForm({
         </div>
       </Field>
 
-      <Field icon={Clock3} label="Starts in">
-        <div className="grid grid-cols-3 gap-2">
-          {TOURNAMENT_START_OPTIONS_SEC.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStartsInSec(s)}
-              className={`btn min-h-11 px-2 ${startsInSec === s ? "btn-primary" : "btn-ghost"}`}
-            >
-              {START_LABEL[s] ?? `${s}s`}
-            </button>
-          ))}
-        </div>
+      <Field icon={Clock3} label="Start date & time">
+        <input
+          type="datetime-local"
+          value={startAt}
+          onChange={(e) => setStartAt(e.target.value)}
+          className="w-full rounded-lg border border-[var(--hairline)] bg-[rgba(255,255,255,0.045)] px-3 py-3 font-num text-sm outline-none transition focus:border-[var(--ocean)] focus:ring-2 focus:ring-[rgba(3,225,255,0.18)] [color-scheme:dark]"
+        />
+        {startValid ? (
+          <p className="mt-2 text-xs text-[var(--ink-muted)]">
+            Starts {new Date(startsAtMs).toLocaleString()}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs font-semibold text-[var(--magenta)]">
+            Pick a date and time in the future.
+          </p>
+        )}
       </Field>
 
       <Field icon={BadgeDollarSign} label="Entry fee (devnet SOL)">
@@ -200,9 +212,9 @@ export default function CreateTournamentForm({
 
       <button
         className="btn btn-primary min-h-12 w-full text-base"
-        disabled={disabled || !feeValid}
+        disabled={disabled || !feeValid || !startValid}
         onClick={() =>
-          onCreate(market, fee, field, rounds, startsInSec, roundSeconds)
+          onCreate(market, fee, field, rounds, startsAtMs, roundSeconds)
         }
       >
         {disabled ? "Connect wallet" : "Create tournament"}

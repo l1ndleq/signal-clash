@@ -62,7 +62,7 @@ export default function LobbyPage() {
     entryFeeSol: number,
     field: number,
     rounds: number,
-    startsInSec: number,
+    startsAtMs: number,
     roundSeconds: number,
   ) => {
     if (!wallet || !isAdmin) return;
@@ -72,7 +72,7 @@ export default function LobbyPage() {
       entryFeeSol,
       field,
       rounds,
-      startsInSec,
+      startsAtMs,
       roundSeconds,
     );
     router.push(`/tournament/${id}`);
