@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { MatchController, type MatchView } from "@/lib/game/matchController";
-import { magicBlock } from "@/lib/magicblock/mockAdapter";
+import { magicBlock } from "@/lib/magicblock";
 import { MatchErSession } from "@/lib/solana/matchEr";
 import { ER_MIRROR_ENABLED } from "@/lib/config";
 import type { Confidence, Direction } from "@/lib/game/types";
@@ -40,6 +40,9 @@ export function useMatch(roomId: string, myWallet: string | null) {
     const controller = new MatchController(magicBlock, roomId, myWallet, mirror);
     ref.current = controller;
     const unsubscribe = controller.subscribe(setView);
+    // Everyone connects the live price feed + watches the room; only the host's
+    // start() (below) begins the round loop.
+    void controller.activate();
     return () => {
       unsubscribe();
       controller.destroy();

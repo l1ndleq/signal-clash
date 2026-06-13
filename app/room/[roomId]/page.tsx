@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -40,6 +40,8 @@ import {
 } from "@/lib/solana/settlement";
 import { shortAddress } from "@/lib/solana/client";
 import { resolveDirection } from "@/lib/game/scoring";
+import { rankStandings } from "@/lib/game/tournament";
+import { recordMatch } from "@/lib/state/playerStats";
 
 export default function RoomPage() {
   const params = useParams<{ roomId: string }>();
@@ -56,6 +58,52 @@ export default function RoomPage() {
   const [entering, setEntering] = useState(false);
 
   const escrow = useMemo(() => getVaultAddress(roomId), [roomId]);
+
+  // Persist the finished match to this wallet's local history (once per match).
+  const recordedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!wallet || view?.phase !== "finished") return;
+    const room = view.room;
+    if (!room || recordedRef.current === room.id) return;
+    const me = room.players[wallet];
+    if (!me) return;
+
+    const standings = rankStandings(room);
+    const mine = standings.find((s) => s.wallet === wallet);
+    const other = standings.find((s) => s.wallet !== wallet);
+    const result = room.isDraw
+      ? "draw"
+      : room.winner === wallet
+        ? "win"
+        : "loss";
+
+    let best = 0;
+    let run = 0;
+    for (const p of me.predictions) {
+      if (p.correct) best = Math.max(best, (run += 1));
+      else run = 0;
+    }
+
+    recordedRef.current = room.id;
+    recordMatch(wallet, {
+      id: room.id,
+      ts: Date.now(),
+      market: room.market,
+      kind: room.kind,
+      result,
+      rank: mine?.rank ?? 1,
+      field: standings.length,
+      myScore: me.score,
+      opponentName: other
+        ? (room.players[other.wallet]?.displayName ?? shortAddress(other.wallet, 4))
+        : "Opponent",
+      opponentScore: other?.score ?? 0,
+      rounds: room.rounds.length,
+      correct: me.predictions.filter((p) => p.correct).length,
+      total: me.predictions.length,
+      bestStreak: best,
+    });
+  }, [wallet, view?.phase, view?.room]);
 
   if (!wallet) {
     return (
@@ -709,7 +757,7 @@ function RoundResult({
               }}
             >
               <span className="font-semibold">
-                {isMe ? "You" : "Signal Bot"}
+                {isMe ? "You" : shortAddress(p.player, 4)}
               </span>
               <span className="font-num">
                 <span style={{ color: dirColor(p.direction) }}>

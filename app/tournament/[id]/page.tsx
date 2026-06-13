@@ -76,9 +76,9 @@ export default function TournamentPage() {
   const now = useNow(!pageStarted && !!startsAt);
   const remainingMs = startsAt ? Math.max(0, startsAt - now) : 0;
 
-  // Ensure the connected wallet holds a seat (seeded tournaments are created by
-  // a placeholder wallet), then start the controller, which fills the remaining
-  // seats with the bot field.
+  // Ensure the connected wallet holds a seat, then start the controller. Only
+  // the room creator (host) drives rounds; other registrants play by submitting
+  // predictions against the host's authoritative round state.
   const beginPlay = useCallback(async () => {
     if (!wallet || !room || pageStarted) return;
     setPageStarted(true);
@@ -433,7 +433,8 @@ function RegistrationPanel({
             <span className="font-num text-[var(--ink)]">
               {solFromLamports(rakeLamports).toFixed(3)} SOL
             </span>
-            . Empty seats are filled by the bot field for the demo.
+            . Players register before the start; the bracket plays out between
+            everyone who joined.
           </p>
         </div>
 
@@ -584,7 +585,7 @@ function TournamentResult({
           >
             <div className="metric-label">{["1st", "2nd", "3rd"][s.rank - 1]}</div>
             <div className="mt-1 truncate text-sm font-bold">
-              {s.wallet === myWallet ? "You" : s.displayName ?? "Bot"}
+              {s.wallet === myWallet ? "You" : s.displayName ?? shortAddress(s.wallet, 4)}
             </div>
             <div className="font-num text-sm font-black text-[var(--ocean)]">
               {solFromLamports(s.payoutLamports).toFixed(3)} SOL

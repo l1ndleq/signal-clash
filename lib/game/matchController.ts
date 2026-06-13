@@ -1,15 +1,14 @@
 /**
  * MatchController — drives a single 1v1 match end-to-end.
  *
- * Owns the live price ticker, per-round timers, and the bot opponent, calling
- * the GameEngine for all state/scoring. It exposes a subscribe/getView surface
- * so a React hook can render it without holding any game logic itself.
+ * Owns the live price ticker and per-round timers, calling the GameEngine for
+ * all state/scoring. It exposes a subscribe/getView surface so a React hook can
+ * render it without holding any game logic itself.
  *
- * Opponent model for the MVP: the seat that is not the connected wallet is
- * driven by the local bot. Because submissions flow through the engine's
- * `submitPrediction`/`lockPrediction`, swapping the bot for a networked human
- * (real online PvP) requires no engine changes — only a different source of
- * those calls.
+ * Opponent model: real online human-vs-human. The room creator is the host and
+ * drives round timing/resolution; the other seat submits predictions, which the
+ * host reads from the shared room state (Supabase). The passive guest derives
+ * its phase/round-deadline from that same shared state.
  */
 
 import { GameEngine } from "./engine";
@@ -17,7 +16,6 @@ import { BinancePriceFeed } from "./binancePriceFeed";
 import { MARKETS } from "./markets";
 import type { Direction, Market, Room } from "./types";
 import type { MagicBlockAdapter } from "@/lib/magicblock/types";
-import { decideBotMove, makeBotSeat } from "./bot";
 
 export type MatchPhase =
   | "ready"
@@ -65,12 +63,15 @@ export class MatchController {
 
   private priceTimer?: ReturnType<typeof setInterval>;
   private roundTimer?: ReturnType<typeof setTimeout>;
-  private botTimers: ReturnType<typeof setTimeout>[] = [];
   private pauseTimer?: ReturnType<typeof setTimeout>;
   private countdownTimer?: ReturnType<typeof setTimeout>;
   private destroyed = false;
   private resolving = false;
   private started = false;
+  private feedReady = false;
+  /** The room creator drives round timing/resolution; the other seat is passive. */
+  private readonly isHost: boolean;
+  private adapterUnsub?: () => void;
 
   private phase: MatchPhase = "ready";
   private countdownValue?: number;
@@ -84,11 +85,17 @@ export class MatchController {
     private readonly myWallet: string,
     private readonly mirror?: MatchMirror,
   ) {
-    this.market = adapter.getRoom(roomId)?.market ?? "SOL/USD";
+    const room = adapter.getRoom(roomId);
+    this.market = room?.market ?? "SOL/USD";
+    this.isHost = room?.creator === myWallet;
     const cfg = MARKETS[this.market];
     this.feed = new BinancePriceFeed(cfg.binanceSymbol, cfg.fallbackPrice);
     this.engine = new GameEngine(adapter, this.feed);
     this.livePrice = this.feed.current();
+
+    // Re-render whenever the shared room changes (opponent joins, host advances
+    // rounds, etc.) — this is how the passive (guest) client stays in sync.
+    this.adapterUnsub = this.adapter.subscribe(roomId, () => this.emit());
   }
 
   subscribe(cb: (v: MatchView) => void): () => void {
@@ -99,27 +106,77 @@ export class MatchController {
 
   getView(): MatchView {
     const room = this.adapter.getRoom(this.roomId) ?? null;
+    const live = this.liveState(room);
     return {
       room,
       myWallet: this.myWallet,
-      opponentWallet: this.botSeats(room)[0] ?? "",
+      opponentWallet: this.opponentWallet(room),
       market: room?.market ?? this.market,
       livePrice: this.livePrice,
       feedLive: this.feed.isLive,
-      roundEndsAt: this.roundEndsAt,
-      phase: this.phase,
-      countdownValue: this.countdownValue,
+      roundEndsAt: live.roundEndsAt,
+      phase: live.phase,
+      countdownValue: live.countdownValue,
       commitRef: this.commitRef,
     };
   }
 
+  /** The other seat (real opponent), or "" while alone. */
+  private opponentWallet(room: Room | null): string {
+    if (!room) return "";
+    return Object.keys(room.players).find((w) => w !== this.myWallet) ?? "";
+  }
+
   /**
-   * Begin the match. The lobby leader can start at any time — empty seats are
-   * filled with bots up to `maxPlayers` so the arena plays at the chosen size.
-   * (Real joined humans keep their seats; bots only fill the remainder.)
+   * Match phase + round deadline. The host owns these locally; the passive guest
+   * derives them from the shared room state the host writes.
+   */
+  private liveState(room: Room | null): {
+    phase: MatchPhase;
+    roundEndsAt: number | null;
+    countdownValue?: number;
+  } {
+    if (this.isHost) {
+      return {
+        phase: this.phase,
+        roundEndsAt: this.roundEndsAt,
+        countdownValue: this.countdownValue,
+      };
+    }
+    if (!room) return { phase: "ready", roundEndsAt: null };
+    if (room.status === "finished") return { phase: "finished", roundEndsAt: null };
+    const round = room.rounds[room.currentRoundIndex];
+    if (!round) return { phase: "ready", roundEndsAt: null };
+    if (round.status === "resolved") return { phase: "round-resolved", roundEndsAt: null };
+    return {
+      phase: "round-active",
+      roundEndsAt: round.startedAt + round.durationSeconds * 1000,
+    };
+  }
+
+  /**
+   * Connect the live price feed and start the display ticker. Called by every
+   * client (host and guest) so both see live prices; does not begin rounds.
+   */
+  async activate(): Promise<void> {
+    if (this.feedReady || this.destroyed) return;
+    this.feedReady = true;
+
+    await this.feed.connect();
+    this.livePrice = this.feed.current();
+    this.priceTimer = setInterval(() => {
+      this.livePrice = this.feed.next();
+      this.emit();
+    }, 1000);
+  }
+
+  /**
+   * Begin the match. Host-only: the room creator drives round timing and
+   * resolution; the opponent plays by submitting predictions, which the host
+   * reads from the shared room state. Real online human-vs-human — no bots.
    */
   async start(): Promise<void> {
-    if (this.started) return;
+    if (this.started || !this.isHost) return;
     this.started = true;
 
     const room = this.adapter.getRoom(this.roomId);
@@ -129,22 +186,7 @@ export class MatchController {
     // wallet popup / confirmation overlaps the countdown rather than stalling it.
     this.mirrorStep("start", () => this.mirror?.start());
 
-    const seatsToFill = room.maxPlayers - Object.keys(room.players).length;
-    for (let i = 0; i < seatsToFill; i++) {
-      const bot = makeBotSeat(i);
-      await this.engine.joinRoom(this.roomId, bot.wallet, bot.name);
-    }
-
-    // Connect the real Binance feed (REST seed + WS stream) before round 1 so
-    // the first round's start price is a real quote.
-    await this.feed.connect();
-    this.livePrice = this.feed.current();
-
-    this.priceTimer = setInterval(() => {
-      this.livePrice = this.feed.next();
-      this.emit();
-    }, 1000);
-
+    await this.activate();
     this.startCountdown();
   }
 
@@ -153,7 +195,8 @@ export class MatchController {
     direction: Room["rounds"][number]["predictions"][number]["direction"],
     confidence: Room["rounds"][number]["predictions"][number]["confidence"],
   ): Promise<void> {
-    if (this.phase !== "round-active") return;
+    const room = this.adapter.getRoom(this.roomId) ?? null;
+    if (this.liveState(room).phase !== "round-active") return;
     await this.engine.submitPrediction({
       roomId: this.roomId,
       player: this.myWallet,
@@ -171,6 +214,7 @@ export class MatchController {
     this.destroyed = true;
     this.stopTimers();
     this.feed.disconnect();
+    this.adapterUnsub?.();
     this.subs.clear();
   }
 
@@ -199,12 +243,6 @@ export class MatchController {
     this.countdownTimer = setTimeout(tick, 900);
   }
 
-  /** Every seat that is not the connected wallet (all bot-driven for the demo). */
-  private botSeats(room: Room | null): string[] {
-    if (!room) return [];
-    return Object.keys(room.players).filter((w) => w !== this.myWallet);
-  }
-
   private async beginRound(): Promise<void> {
     const room = this.adapter.getRoom(this.roomId);
     if (!room) return;
@@ -219,32 +257,8 @@ export class MatchController {
 
     const durationMs = room.roundDurationSeconds * 1000;
     this.roundEndsAt = Date.now() + durationMs;
-
-    // Schedule each bot seat's move independently, then the hard deadline.
-    this.botTimers = this.botSeats(room).map((seat) => {
-      const move = decideBotMove();
-      const delay = Math.max(500, Math.min(move.delayMs, durationMs - 500));
-      return setTimeout(() => {
-        void this.botSubmit(seat, move.direction, move.confidence);
-      }, delay);
-    });
     this.roundTimer = setTimeout(() => void this.resolveRound(), durationMs);
 
-    this.emit();
-  }
-
-  private async botSubmit(
-    seat: string,
-    direction: ReturnType<typeof decideBotMove>["direction"],
-    confidence: ReturnType<typeof decideBotMove>["confidence"],
-  ): Promise<void> {
-    await this.engine.submitPrediction({
-      roomId: this.roomId,
-      player: seat,
-      direction,
-      confidence,
-    });
-    await this.engine.lockPrediction(this.roomId, seat);
     this.emit();
   }
 
@@ -252,7 +266,6 @@ export class MatchController {
     if (this.resolving) return;
     this.resolving = true;
     clearTimeout(this.roundTimer);
-    this.botTimers.forEach(clearTimeout);
 
     const room = this.adapter.getRoom(this.roomId);
     if (!room) return;
@@ -328,8 +341,6 @@ export class MatchController {
   private stopTimers(): void {
     if (this.priceTimer) clearInterval(this.priceTimer);
     if (this.roundTimer) clearTimeout(this.roundTimer);
-    this.botTimers.forEach(clearTimeout);
-    this.botTimers = [];
     if (this.pauseTimer) clearTimeout(this.pauseTimer);
     if (this.countdownTimer) clearTimeout(this.countdownTimer);
   }

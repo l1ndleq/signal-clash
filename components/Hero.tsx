@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight, Menu } from "lucide-react";
 import WalletButton from "@/components/WalletButton";
 import ShinyText from "@/components/ShinyText";
-
-const NAV_LINKS: { label: string; href: string }[] = [
-  { label: "Home", href: "/" },
-  { label: "How it Works", href: "/#how-it-works" },
-  { label: "Arena", href: "/arena" },
-  { label: "Leaderboard", href: "/lobby" },
-  { label: "Docs", href: "/docs" },
-];
+import { NAV_LINKS } from "@/lib/navLinks";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 const container: Variants = {
@@ -76,6 +69,7 @@ export default function Hero() {
 }
 
 function Nav() {
+  const pathname = usePathname();
   return (
     <header className="flex items-center justify-between gap-4 py-5 md:py-6">
       <Link href="/" aria-label="Signal Clash home" className="flex items-center gap-3">
@@ -86,12 +80,16 @@ function Nav() {
       </Link>
 
       <div className="flex items-center gap-3">
-        <nav className="hidden items-center gap-1 rounded-full border border-gray-700 px-2 py-1 lg:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-white/10 px-1.5 py-1 lg:flex">
           {NAV_LINKS.map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className="rounded-full px-3 py-1.5 text-sm text-white/80 transition-colors hover:text-white"
+              className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                pathname === item.href
+                  ? "bg-white/10 text-white"
+                  : "text-white/70 hover:text-white"
+              }`}
             >
               {item.label}
             </Link>

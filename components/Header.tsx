@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Radio } from "lucide-react";
 import WalletButton from "./WalletButton";
+import { NAV_LINKS } from "@/lib/navLinks";
 
 export default function Header() {
   const pathname = usePathname();
@@ -36,10 +37,18 @@ export default function Header() {
 
         <nav className="flex flex-wrap items-center gap-2 lg:justify-end">
           <div className="flex items-center gap-1 rounded-full border border-white/10 px-1.5 py-1">
-            <NavLink href="/" label="Home" active={pathname === "/"} />
-            <NavLink href="/lobby" label="Lobby" active={pathname === "/lobby"} />
-            <NavLink href="/arena" label="Demo" active={pathname === "/arena"} />
-            <NavLink href="/docs" label="Docs" active={pathname === "/docs"} />
+            {NAV_LINKS.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                active={
+                  item.href === "/"
+                    ? pathname === "/"
+                    : (pathname?.startsWith(item.href) ?? false)
+                }
+              />
+            ))}
           </div>
           <span className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/60 sm:inline-flex">
             <Radio size={13} aria-hidden />

@@ -15,7 +15,7 @@ interface Row {
 
 const INITIAL_ROWS: Row[] = [
   { id: 1, name: "you", score: 640 },
-  { id: 2, name: "signal-bot", score: 515 },
+  { id: 2, name: "rival.sol", score: 515 },
   { id: 3, name: "phantom.sol", score: 430 },
   { id: 4, name: "magicrunner", score: 365 },
 ];

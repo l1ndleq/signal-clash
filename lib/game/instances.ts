@@ -6,6 +6,6 @@
 
 import { GameEngine } from "./engine";
 import { MockPriceFeed } from "./mockPriceFeed";
-import { magicBlock } from "@/lib/magicblock/mockAdapter";
+import { magicBlock } from "@/lib/magicblock";
 
 export const lobbyEngine = new GameEngine(magicBlock, new MockPriceFeed());

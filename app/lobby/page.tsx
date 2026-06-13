@@ -214,7 +214,7 @@ export default function LobbyPage() {
               </div>
               <span className="chip text-[var(--ink-muted)]">
                 <Users size={13} aria-hidden />
-                Bot fills empty seats in demo
+                Real-time PvP — wait for an opponent
               </span>
             </div>
 
@@ -224,7 +224,7 @@ export default function LobbyPage() {
                 title="No open arenas yet"
                 body={
                   wallet
-                    ? "Create the first room and the demo bot will be ready to clash."
+                    ? "Create the first room and wait for an opponent to join."
                     : "Connect wallet, then create the first room or join one when it appears."
                 }
               />

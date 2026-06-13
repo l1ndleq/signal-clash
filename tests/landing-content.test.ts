@@ -64,9 +64,11 @@ describe("app shell copy", () => {
     const arena = read("app/arena/page.tsx");
     const room = read("app/room/[roomId]/page.tsx");
     const header = read("components/Header.tsx");
+    const nav = read("lib/navLinks.ts");
 
-    ["Home", "Lobby", "Demo", "Devnet"].forEach((copy) =>
-      expect(header).toContain(copy),
+    ["Devnet"].forEach((copy) => expect(header).toContain(copy));
+    ["Home", "Lobby", "Arena", "Leaderboard"].forEach((copy) =>
+      expect(nav).toContain(copy),
     );
 
     [

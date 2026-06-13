@@ -215,8 +215,8 @@ npm run dev                      # http://localhost:3000`}</Code>
                 </li>
                 <li>
                   <B>Game engine</B> — <Mono>lib/game/</Mono> (pure scoring,
-                  room / round lifecycle, bot, match controller). Framework-free
-                  and testable.
+                  room / round lifecycle, match controller). Framework-free and
+                  testable.
                 </li>
                 <li>
                   <B>MagicBlock real-time layer</B> — <Mono>lib/magicblock/</Mono>{" "}
@@ -264,14 +264,15 @@ npm run dev                      # http://localhost:3000`}</Code>
                 mainnet custody.
               </Faq>
               <Faq q="Who is my opponent?">
-                In the solo demo the opponent is a local Signal Bot. The same
-                engine calls support networked human submissions.
+                Another player. Signal Clash is real-time human-vs-human — create
+                or join a room and play whoever takes the other seat. Shared room
+                state syncs over Supabase Realtime.
               </Faq>
               <Faq q="What's real vs mocked?">
                 Real: wallet connect, devnet balance, entry-fee deposit and winner
-                payout, live Binance feed, TradingView chart, all scoring. Mocked:
-                the bot opponent and the MagicBlock real-time layer (behind a
-                production interface).
+                payout, live Binance feed, TradingView chart, all scoring, and
+                online multiplayer via Supabase. The MagicBlock Ephemeral Rollup
+                layer sits behind a production interface.
               </Faq>
             </Section>
 

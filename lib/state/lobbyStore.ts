@@ -9,7 +9,7 @@
 import { create } from "zustand";
 import type { Market, Room } from "@/lib/game/types";
 import { lobbyEngine } from "@/lib/game/instances";
-import { magicBlock } from "@/lib/magicblock/mockAdapter";
+import { magicBlock } from "@/lib/magicblock";
 import { ROUND_DURATION_SECONDS, TOTAL_ROUNDS, lamports } from "@/lib/config";
 
 const SEED_ROOMS: {
