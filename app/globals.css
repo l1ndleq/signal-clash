@@ -887,19 +887,17 @@ h4,
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif !important;
 }
 
-/* Page background: black with a faint Solana wash, no neon grid/diagonals. */
+/* Page shell is transparent — the site-wide cosmic background shows through. */
 .app-shell {
-  background:
-    radial-gradient(900px 600px at 50% -12%, rgba(153, 69, 255, 0.12), transparent 60%),
-    radial-gradient(760px 520px at 100% 8%, rgba(20, 241, 149, 0.08), transparent 55%),
-    #000 !important;
+  background: transparent !important;
 }
 .app-shell::before,
 .app-shell::after {
   display: none !important;
 }
 
-/* Frosted minimal surfaces (replaces glassy neon panels). */
+/* Frosted minimal surfaces (replaces glassy neon panels). Darker, more
+   opaque fill so content reads clearly over the cosmic background. */
 .card,
 .app-hero,
 .app-panel,
@@ -908,11 +906,11 @@ h4,
 .story-panel {
   border-radius: 16px !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(7, 8, 12, 0.96) !important;
   box-shadow: none !important;
   clip-path: none !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 .card::before,
 .card::after,

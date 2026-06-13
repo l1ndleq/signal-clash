@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ReactLenis } from "lenis/react";
 import { motion, useReducedMotion, useScroll, useSpring } from "framer-motion";
@@ -24,9 +23,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Hero from "@/components/Hero";
-
-// One shared 3D background for the whole page (same scene as the hero block).
-const HeroScene = dynamic(() => import("@/components/HeroScene"), { ssr: false });
 
 // Shared style tokens — minimal, premium, matching the hero.
 const CARD =
@@ -96,20 +92,8 @@ export default function Landing() {
       root
       options={{ lerp: shouldReduceMotion ? 1 : 0.08, smoothWheel: !shouldReduceMotion }}
     >
-      <main className="relative min-h-screen overflow-hidden bg-black text-white">
-        {/* Shared living 3D background behind the whole page. */}
-        <div className="pointer-events-none fixed inset-0 z-0">
-          <HeroScene />
-        </div>
-        {/* Scrim keeps body copy readable over the particle field. */}
-        <div
-          className="pointer-events-none fixed inset-0 z-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.6) 100%)",
-          }}
-        />
-
+      <main className="relative min-h-screen overflow-hidden text-white">
+        {/* Cosmic background is provided site-wide by the root layout. */}
         <ScrollProgress />
 
         <div className="relative z-10">
@@ -130,6 +114,7 @@ export default function Landing() {
 function MarketAlive() {
   return (
     <StorySection
+      id="how-it-works"
       marker="01"
       title="Market Is Alive"
       copy="Every round starts with a moving market. The price shifts, the timer opens, and you have seconds to read the signal."
@@ -256,15 +241,17 @@ function StorySection({
   copy,
   visual,
   reverse = false,
+  id,
 }: {
   marker: string;
   title: string;
   copy: string;
   visual: ReactNode;
   reverse?: boolean;
+  id?: string;
 }) {
   return (
-    <section className="relative px-5 py-24 md:px-8 md:py-32">
+    <section id={id} className="relative scroll-mt-24 px-5 py-24 md:px-8 md:py-32">
       <div
         className={`mx-auto grid max-w-7xl gap-12 lg:grid-cols-2 lg:items-center ${
           reverse ? "lg:[&>*:first-child]:order-2" : ""

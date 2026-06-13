@@ -9,10 +9,10 @@ import ShinyText from "@/components/ShinyText";
 
 const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Home", href: "/" },
-  { label: "How it Works", href: "/#market-is-alive" },
+  { label: "How it Works", href: "/#how-it-works" },
   { label: "Arena", href: "/arena" },
   { label: "Leaderboard", href: "/lobby" },
-  { label: "Docs", href: "/#market-is-alive" },
+  { label: "Docs", href: "/docs" },
 ];
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];

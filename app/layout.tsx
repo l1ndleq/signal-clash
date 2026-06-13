@@ -3,6 +3,7 @@ import { Geist, Chakra_Petch, JetBrains_Mono, Inter, Space_Grotesk } from "next/
 import "./globals.css";
 import Providers from "./providers";
 import CustomCursor from "@/components/CustomCursor";
+import CosmicBackground from "@/components/CosmicBackground";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,9 +51,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${chakraPetch.variable} ${jetbrainsMono.variable} ${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-black">
         <Providers>
           <CustomCursor />
+          <CosmicBackground />
           {children}
         </Providers>
       </body>

@@ -39,6 +39,7 @@ export default function Header() {
             <NavLink href="/" label="Home" active={pathname === "/"} />
             <NavLink href="/lobby" label="Lobby" active={pathname === "/lobby"} />
             <NavLink href="/arena" label="Demo" active={pathname === "/arena"} />
+            <NavLink href="/docs" label="Docs" active={pathname === "/docs"} />
           </div>
           <span className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/60 sm:inline-flex">
             <Radio size={13} aria-hidden />
