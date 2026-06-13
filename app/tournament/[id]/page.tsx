@@ -513,10 +513,12 @@ function TournamentResult({
     setClaiming(true);
     setMsg(null);
     try {
+      const { winners, places } = buildSettleWinners(room, myWallet);
       const res = await settleGame({
         gameId: room.id,
         authority: publicKey,
-        winners: buildSettleWinners(room, myWallet),
+        winners,
+        places,
         sendTransaction: (tx: Transaction, conn: Connection) =>
           sendTransaction(tx, conn),
       });

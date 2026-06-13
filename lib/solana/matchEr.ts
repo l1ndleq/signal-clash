@@ -95,6 +95,7 @@ export class MatchErSession {
           gameId: this.gameId,
           authority: this.authority,
           totalRounds: this.totalRounds,
+          session: this.session.publicKey,
         }),
         buildDelegateIx({ gameId: this.gameId, payer: this.authority }),
       );
@@ -112,14 +113,24 @@ export class MatchErSession {
   /** ER, session-signed: lock a prediction for the current round. */
   submitPrediction(direction: Direction, confidence: number): Promise<ErStepResult> {
     return this.sendOnEr(
-      buildSubmitPredictionIx({ gameId: this.gameId, direction, confidence }),
+      buildSubmitPredictionIx({
+        gameId: this.gameId,
+        direction,
+        confidence,
+        session: this.session.publicKey,
+      }),
     );
   }
 
   /** ER, session-signed: apply the off-chain-scored delta + new streak. */
   resolveRound(scoreDelta: number, newStreak: number): Promise<ErStepResult> {
     return this.sendOnEr(
-      buildResolveRoundIx({ gameId: this.gameId, scoreDelta, newStreak }),
+      buildResolveRoundIx({
+        gameId: this.gameId,
+        scoreDelta,
+        newStreak,
+        session: this.session.publicKey,
+      }),
     );
   }
 

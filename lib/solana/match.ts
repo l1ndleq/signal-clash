@@ -81,12 +81,14 @@ export function buildCreateMatchIx(params: {
   gameId: string;
   authority: PublicKey;
   totalRounds: number;
+  session: PublicKey;
 }): TransactionInstruction {
   const matchPda = deriveMatchPda(params.gameId);
   const data = concat([
     DISC.createMatch,
     encString(params.gameId),
     Uint8Array.from([params.totalRounds]),
+    params.session.toBytes(),
   ]);
   return new TransactionInstruction({
     programId: MATCH_PROGRAM,
@@ -133,6 +135,7 @@ export function buildSubmitPredictionIx(params: {
   gameId: string;
   direction: "UP" | "DOWN" | "FLAT";
   confidence: number;
+  session: PublicKey;
 }): TransactionInstruction {
   const matchPda = deriveMatchPda(params.gameId);
   const data = concat([
@@ -143,7 +146,10 @@ export function buildSubmitPredictionIx(params: {
   ]);
   return new TransactionInstruction({
     programId: MATCH_PROGRAM,
-    keys: [{ pubkey: matchPda, isSigner: false, isWritable: true }],
+    keys: [
+      { pubkey: matchPda, isSigner: false, isWritable: true },
+      { pubkey: params.session, isSigner: true, isWritable: false },
+    ],
     data: Buffer.from(data),
   });
 }
@@ -152,6 +158,7 @@ export function buildResolveRoundIx(params: {
   gameId: string;
   scoreDelta: number;
   newStreak: number;
+  session: PublicKey;
 }): TransactionInstruction {
   const matchPda = deriveMatchPda(params.gameId);
   const data = concat([
@@ -162,7 +169,10 @@ export function buildResolveRoundIx(params: {
   ]);
   return new TransactionInstruction({
     programId: MATCH_PROGRAM,
-    keys: [{ pubkey: matchPda, isSigner: false, isWritable: true }],
+    keys: [
+      { pubkey: matchPda, isSigner: false, isWritable: true },
+      { pubkey: params.session, isSigner: true, isWritable: false },
+    ],
     data: Buffer.from(data),
   });
 }

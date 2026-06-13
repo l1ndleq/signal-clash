@@ -36,6 +36,7 @@ import {
   depositEntryFee,
   getVaultAddress,
   settleGame,
+  voidGame,
 } from "@/lib/solana/settlement";
 import { shortAddress } from "@/lib/solana/client";
 import { resolveDirection } from "@/lib/game/scoring";
@@ -166,10 +167,12 @@ export default function RoomPage() {
     if (!publicKey) return;
     setPayout({ claiming: true });
     try {
+      const { winners, places } = buildSettleWinners(room, wallet);
       const res = await settleGame({
         gameId: roomId,
         authority: publicKey,
-        winners: buildSettleWinners(room, wallet),
+        winners,
+        places,
         sendTransaction: (tx: Transaction, conn: Connection) =>
           sendTransaction(tx, conn),
       });
@@ -191,6 +194,36 @@ export default function RoomPage() {
       setPayout({
         claiming: false,
         message: e instanceof Error ? `Settle failed: ${e.message}` : "Settle failed",
+      });
+    }
+  };
+
+  const onVoid = async () => {
+    if (!publicKey) return;
+    setPayout({ claiming: true });
+    try {
+      const res = await voidGame({
+        gameId: roomId,
+        payer: publicKey,
+        sendTransaction: (tx: Transaction, conn: Connection) =>
+          sendTransaction(tx, conn),
+      });
+      if (res) {
+        setPayout({
+          claiming: false,
+          explorerUrl: res.explorerUrl,
+          message: "Abandoned game voided: every depositor refunded their entry fee.",
+        });
+      } else {
+        setPayout({
+          claiming: false,
+          message: "No on-chain vault to refund for this game.",
+        });
+      }
+    } catch (e) {
+      setPayout({
+        claiming: false,
+        message: e instanceof Error ? `Refund failed: ${e.message}` : "Refund failed",
       });
     }
   };
@@ -234,6 +267,7 @@ export default function RoomPage() {
             commitRef={view.commitRef}
             payout={payout}
             onClaim={onClaim}
+            onVoid={onVoid}
           />
         </div>
       ) : view.phase === "ready" ? (

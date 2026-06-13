@@ -9,9 +9,9 @@
  *     unfilled-place shares to the treasury — all in one program instruction.
  *
  * In the solo demo only the connected wallet is a real depositor, so the vault
- * holds a single entry fee and `buildSettleWinners` fills the unpayable higher
- * places (bot seats) with the treasury so the human still receives their own
- * place's share.
+ * holds a single entry fee and `buildSettleWinners` pays just that wallet its
+ * own finishing place — the unclaimed places + rake fall through to the treasury
+ * on-chain.
  */
 
 import {
@@ -22,11 +22,12 @@ import {
 import { RAKE_BPS } from "@/lib/config";
 import { explorerTxUrl, getConnection } from "./client";
 import {
-  TREASURY,
   buildDepositIx,
   buildInitializeVaultIx,
   buildSettleIx,
+  buildVoidIx,
   deriveVaultPda,
+  parseVaultPlayers,
 } from "./vault";
 import { paidPlacesForField, rankStandings } from "@/lib/game/tournament";
 import type { Room } from "@/lib/game/types";
@@ -93,23 +94,25 @@ export async function depositEntryFee(
 }
 
 /**
- * Build the ranked recipient list for `settle`. Real in-the-money wallets sit
- * at their rank; unpayable higher places (bot seats with no wallet) are filled
- * with the treasury so their shares are routed there. Returns [] when the
- * wallet finished out of the money (the whole pot then goes to the treasury).
+ * Build the winner/place lists for `settle`. Each real in-the-money wallet is
+ * paid the share for its own finishing place; unclaimed places fall through to
+ * the treasury on-chain. Returns empty lists when the wallet finished out of the
+ * money (the whole pot then goes to the treasury).
  *
- * In a true multi-human game this would instead pass every real winner wallet.
+ * Solo demo: only the connected wallet is a real depositor, so this is just that
+ * wallet at its place. A true multi-human game would pass every winning wallet
+ * with its place — the on-chain program checks each is a recorded depositor.
  */
-export function buildSettleWinners(room: Room, myWallet: string): PublicKey[] {
+export function buildSettleWinners(
+  room: Room,
+  myWallet: string,
+): { winners: PublicKey[]; places: number[] } {
   const standings = rankStandings(room);
   const paid = paidPlacesForField(room.maxPlayers);
   const mine = standings.find((s) => s.wallet === myWallet);
-  if (!mine || mine.rank > paid) return [];
+  if (!mine || mine.rank > paid) return { winners: [], places: [] };
 
-  const winners: PublicKey[] = [];
-  for (let i = 1; i < mine.rank; i++) winners.push(TREASURY);
-  winners.push(new PublicKey(myWallet));
-  return winners;
+  return { winners: [new PublicKey(myWallet)], places: [mine.rank - 1] };
 }
 
 export interface SettleParams {
@@ -117,6 +120,8 @@ export interface SettleParams {
   /** The wallet that initialized the vault (the depositor in the solo demo). */
   authority: PublicKey;
   winners: PublicKey[];
+  /** Prize place (0-based) for each winner, aligned with `winners`. */
+  places: number[];
   sendTransaction: WalletSend;
 }
 
@@ -138,12 +143,49 @@ export async function settleGame(
       gameId: params.gameId,
       authority: params.authority,
       winners: params.winners,
+      places: params.places,
     }),
   );
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash();
   tx.recentBlockhash = blockhash;
   tx.feePayer = params.authority;
+
+  const signature = await params.sendTransaction(tx, connection);
+  await connection.confirmTransaction(
+    { signature, blockhash, lastValidBlockHeight },
+    "confirmed",
+  );
+  return { signature, explorerUrl: explorerTxUrl(signature) };
+}
+
+export interface VoidParams {
+  gameId: string;
+  payer: PublicKey;
+  sendTransaction: WalletSend;
+}
+
+/**
+ * Void an abandoned game: refund every recorded depositor their own entry fee.
+ * Only succeeds once the on-chain abandonment window has elapsed. Reads the
+ * depositor registry from the vault account; returns null if no vault exists.
+ */
+export async function voidGame(
+  params: VoidParams,
+): Promise<SettlementResult | null> {
+  const connection = getConnection();
+  const vault = deriveVaultPda(params.gameId);
+  const info = await connection.getAccountInfo(vault);
+  if (!info) return null;
+
+  const players = parseVaultPlayers(info.data);
+  const tx = new Transaction().add(
+    buildVoidIx({ gameId: params.gameId, payer: params.payer, players }),
+  );
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = params.payer;
 
   const signature = await params.sendTransaction(tx, connection);
   await connection.confirmTransaction(

@@ -18,12 +18,14 @@ export default function ResultCard({
   commitRef,
   payout,
   onClaim,
+  onVoid,
 }: {
   room: Room;
   myWallet: string;
   commitRef?: string;
   payout: PayoutState;
   onClaim: () => void;
+  onVoid: () => void;
 }) {
   const me = room.players[myWallet];
   const standings = rankStandings(room);
@@ -125,6 +127,16 @@ export default function ResultCard({
           <p className="mt-3 text-xs leading-5 text-[var(--ink-muted)]">
             {payout.message}
           </p>
+        )}
+        {!payout.explorerUrl && (
+          <button
+            className="mt-3 text-xs font-semibold text-[var(--ink-muted)] underline underline-offset-2 transition hover:text-[var(--ink)] disabled:opacity-45"
+            disabled={payout.claiming}
+            onClick={onVoid}
+            title="Refund every depositor their entry fee from an abandoned game (available 24h after deposit if it was never settled)"
+          >
+            Game abandoned? Refund all deposits
+          </button>
         )}
         {commitRef && (
           <p className="mt-3 break-all font-num text-[0.7rem] text-[var(--ink-muted)]">

@@ -29,14 +29,17 @@ pub const MATCH_SEED: &[u8] = b"match";
 pub mod signal_clash_match {
     use super::*;
 
-    /// L1: create the per-game match-state PDA.
+    /// L1: create the per-game match-state PDA. `session` is the ephemeral key
+    /// that is allowed to sign the gasless ER writes for this match.
     pub fn create_match(
         ctx: Context<CreateMatch>,
         _game_id: String,
         total_rounds: u8,
+        session: Pubkey,
     ) -> Result<()> {
         let m = &mut ctx.accounts.match_state;
         m.authority = ctx.accounts.authority.key();
+        m.session = session;
         m.score = 0;
         m.streak = 0;
         m.round = 0;
@@ -68,6 +71,11 @@ pub mod signal_clash_match {
         direction: u8,
         confidence: u8,
     ) -> Result<()> {
+        require_keys_eq!(
+            ctx.accounts.session.key(),
+            ctx.accounts.match_state.session,
+            MatchError::Unauthorized
+        );
         let m = &mut ctx.accounts.match_state;
         require!(!m.finished, MatchError::Finished);
         m.pending_dir = direction;
@@ -82,6 +90,11 @@ pub mod signal_clash_match {
         score_delta: i64,
         new_streak: u8,
     ) -> Result<()> {
+        require_keys_eq!(
+            ctx.accounts.session.key(),
+            ctx.accounts.match_state.session,
+            MatchError::Unauthorized
+        );
         let m = &mut ctx.accounts.match_state;
         require!(!m.finished, MatchError::Finished);
         m.score = m
@@ -100,6 +113,11 @@ pub mod signal_clash_match {
         ctx: Context<CommitMatch>,
         _game_id: String,
     ) -> Result<()> {
+        require_keys_eq!(
+            ctx.accounts.payer.key(),
+            ctx.accounts.match_state.session,
+            MatchError::Unauthorized
+        );
         let m = &mut ctx.accounts.match_state;
         m.finished = true;
         // Flush the Anchor account so the commit captures the latest data.
@@ -146,6 +164,8 @@ pub struct DelegateMatch<'info> {
 pub struct UpdateMatch<'info> {
     #[account(mut, seeds = [MATCH_SEED, game_id.as_bytes()], bump)]
     pub match_state: Account<'info, MatchState>,
+    /// The ephemeral session key registered at create_match — only it may write.
+    pub session: Signer<'info>,
 }
 
 /// `#[commit]` injects the `magic_context` and `magic_program` accounts.
@@ -163,6 +183,8 @@ pub struct CommitMatch<'info> {
 #[derive(InitSpace)]
 pub struct MatchState {
     pub authority: Pubkey,
+    /// Ephemeral key allowed to sign the gasless ER writes for this match.
+    pub session: Pubkey,
     pub score: i64,
     pub streak: u8,
     pub round: u8,
@@ -176,6 +198,8 @@ pub struct MatchState {
 pub enum MatchError {
     #[msg("match already finished")]
     Finished,
+    #[msg("unauthorized session key")]
+    Unauthorized,
     #[msg("arithmetic overflow")]
     Overflow,
 }
