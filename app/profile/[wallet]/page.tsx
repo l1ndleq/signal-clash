@@ -31,7 +31,7 @@ export default function ProfilePage() {
 
   // External-store read bound to this wallet (SSR-safe, no setState-in-effect).
   const getSnap = useCallback(() => historySnapshot(wallet), [wallet]);
-  const getServerSnap = useCallback(() => historyServerSnapshot(wallet), [wallet]);
+  const getServerSnap = useCallback(() => historyServerSnapshot(), []);
   const history = useSyncExternalStore(subscribePlayerStats, getSnap, getServerSnap);
   const data = { history, stats: computeStats(wallet, history) };
 
