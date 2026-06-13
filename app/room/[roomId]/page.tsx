@@ -29,7 +29,7 @@ import TradingViewChart from "@/components/TradingViewChart";
 import { useMatch } from "@/lib/state/useMatch";
 import { lobbyEngine } from "@/lib/game/instances";
 import { MARKETS, formatPrice } from "@/lib/game/markets";
-import type { Market } from "@/lib/game/types";
+import type { Market, Round } from "@/lib/game/types";
 import { solFromLamports } from "@/lib/config";
 import {
   buildSettleWinners,
@@ -233,7 +233,12 @@ export default function RoomPage() {
       <ArenaEntryOverlay show={entering} market={room.market} />
       <AnimatePresence>
         {view.phase === "countdown" && view.countdownValue !== undefined && (
-          <CountdownOverlay value={view.countdownValue} market={room.market} />
+          <CountdownOverlay
+            value={view.countdownValue}
+            market={room.market}
+            prevRound={round?.status === "resolved" ? round : undefined}
+            myWallet={wallet}
+          />
         )}
       </AnimatePresence>
 
@@ -314,7 +319,7 @@ export default function RoomPage() {
               />
             </section>
 
-            <TradingViewChart symbol={MARKETS[room.market].tvSymbol} />
+            <TradingViewChart symbol={MARKETS[room.market].tvSymbol} height={900} />
 
             <div className="grid gap-5 lg:grid-cols-[180px_1fr]">
               <div className="app-panel grid place-items-center p-5">
@@ -639,45 +644,91 @@ function RoundResult({
   }[];
 }) {
   const actual = resolveDirection(startPrice, endPrice);
+  const mine = predictions.find((p) => p.player === myWallet);
+  const iWon = !!mine?.correct;
+  const myDelta = mine?.scoreDelta ?? 0;
+  const verdictColor = !mine
+    ? "var(--flat)"
+    : iWon
+      ? "var(--up)"
+      : "var(--down)";
+  const verdict = !mine ? "No call" : iWon ? "Correct call" : "Missed";
+  const movedPct = startPrice ? ((endPrice - startPrice) / startPrice) * 100 : 0;
+
   return (
-    <div className="app-panel p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <motion.div
+      initial={{ opacity: 0, y: 18, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="app-panel p-5 md:p-7"
+      style={{ borderColor: verdictColor, boxShadow: `0 0 56px -12px ${verdictColor}` }}
+    >
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="app-eyebrow">Round result</div>
-          <h3 className="mt-1 font-display text-2xl font-bold">
-            Signal resolved
-          </h3>
-        </div>
-        <span className="chip" style={{ color: dirColor(actual) }}>
-          actual: {actual}
-        </span>
-      </div>
-      <div className="mt-4 grid gap-2">
-        {predictions.map((p) => (
-          <div
-            key={p.player}
-            className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg border border-[var(--hairline)] bg-[rgba(255,255,255,0.04)] px-3 py-3 text-sm"
+          <h3
+            className="mt-1 font-display text-5xl font-black leading-none md:text-6xl"
+            style={{ color: verdictColor }}
           >
-            <span className="font-semibold">
-              {p.player === myWallet ? "You" : "Signal Bot"}
-            </span>
-            <span className="font-num">
-              <span style={{ color: dirColor(p.direction) }}>
-                {p.direction}
-              </span>{" "}
-              {p.confidence}x
-            </span>
-            <span
-              className="font-num font-black"
-              style={{ color: p.correct ? "var(--up)" : "var(--down)" }}
-            >
-              {(p.scoreDelta ?? 0) >= 0 ? "+" : ""}
-              {p.scoreDelta ?? 0}
+            {verdict}
+          </h3>
+          <div className="mt-3 text-sm text-[var(--ink-muted)]">
+            Market moved{" "}
+            <span className="font-num font-bold" style={{ color: dirColor(actual) }}>
+              {actual} {movedPct >= 0 ? "+" : ""}
+              {movedPct.toFixed(2)}%
             </span>
           </div>
-        ))}
+        </div>
+        {mine && (
+          <div
+            className="clip-corner grid shrink-0 place-items-center border bg-[rgba(255,255,255,0.04)] px-7 py-4 text-center"
+            style={{ borderColor: verdictColor }}
+          >
+            <div className="metric-label">Your points</div>
+            <div
+              className="font-num text-6xl font-black leading-none"
+              style={{ color: verdictColor }}
+            >
+              {myDelta >= 0 ? "+" : ""}
+              {myDelta}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+      <div className="mt-6 grid gap-2">
+        {predictions.map((p) => {
+          const isMe = p.player === myWallet;
+          return (
+            <div
+              key={p.player}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg border px-3 py-3 text-sm"
+              style={{
+                borderColor: isMe ? verdictColor : "var(--hairline)",
+                background: isMe ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)",
+              }}
+            >
+              <span className="font-semibold">
+                {isMe ? "You" : "Signal Bot"}
+              </span>
+              <span className="font-num">
+                <span style={{ color: dirColor(p.direction) }}>
+                  {p.direction}
+                </span>{" "}
+                {p.confidence}x
+              </span>
+              <span
+                className="font-num text-2xl font-black"
+                style={{ color: p.correct ? "var(--up)" : "var(--down)" }}
+              >
+                {(p.scoreDelta ?? 0) >= 0 ? "+" : ""}
+                {p.scoreDelta ?? 0}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 }
 
@@ -685,7 +736,17 @@ function dirColor(d: string): string {
   return d === "UP" ? "var(--up)" : d === "DOWN" ? "var(--down)" : "var(--flat)";
 }
 
-function CountdownOverlay({ value, market }: { value: number; market: Market }) {
+function CountdownOverlay({
+  value,
+  market,
+  prevRound,
+  myWallet,
+}: {
+  value: number;
+  market: Market;
+  prevRound?: Round;
+  myWallet: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -695,6 +756,9 @@ function CountdownOverlay({ value, market }: { value: number; market: Market }) 
       className="fixed inset-0 z-40 grid place-items-center bg-[rgba(7,9,14,0.9)] backdrop-blur-sm"
     >
       <div className="flex flex-col items-center gap-6 text-center">
+        {prevRound && prevRound.endPrice != null && (
+          <PrevRoundSummary round={prevRound} myWallet={myWallet} />
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={value}
@@ -710,6 +774,50 @@ function CountdownOverlay({ value, market }: { value: number; market: Market }) 
         </AnimatePresence>
         <div className="font-mono text-sm uppercase tracking-[0.4em] text-[var(--ink-muted)]">
           [ {market} · round starting ]
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Compact previous-round outcome shown on the next round's countdown screen. */
+function PrevRoundSummary({ round, myWallet }: { round: Round; myWallet: string }) {
+  const actual = resolveDirection(round.startPrice, round.endPrice ?? round.startPrice);
+  const mine = round.predictions.find((p) => p.player === myWallet);
+  const iWon = !!mine?.correct;
+  const myDelta = mine?.scoreDelta ?? 0;
+  const verdictColor = !mine ? "var(--flat)" : iWon ? "var(--up)" : "var(--down)";
+  const verdict = !mine ? "No call" : iWon ? "Correct call" : "Missed";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+      className="hud-panel flex items-center gap-5 px-6 py-3"
+    >
+      <div className="text-left">
+        <div className="hud-label">Last round</div>
+        <div
+          className="font-display text-xl font-black leading-none"
+          style={{ color: verdictColor }}
+        >
+          {verdict}
+        </div>
+      </div>
+      <div className="h-8 w-px bg-[var(--hairline)]" />
+      <div className="text-left">
+        <div className="metric-label">Actual</div>
+        <div className="font-num text-lg font-bold" style={{ color: dirColor(actual) }}>
+          {actual}
+        </div>
+      </div>
+      <div className="h-8 w-px bg-[var(--hairline)]" />
+      <div className="text-left">
+        <div className="metric-label">Your points</div>
+        <div className="font-num text-2xl font-black" style={{ color: verdictColor }}>
+          {myDelta >= 0 ? "+" : ""}
+          {myDelta}
         </div>
       </div>
     </motion.div>

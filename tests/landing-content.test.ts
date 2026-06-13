@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const textFiles = [
   "app/page.tsx",
+  "components/Hero.tsx",
   "app/globals.css",
   "app/lobby/page.tsx",
   "app/arena/page.tsx",
@@ -27,13 +28,23 @@ const textFiles = [
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("landing page copy", () => {
+  it("hero entry surfaces the brand, headline, and primary CTA", () => {
+    const hero = read("components/Hero.tsx");
+
+    [
+      "Signal Clash",
+      "Round Starts in Seconds",
+      "Predict the",
+      "Market.",
+      "Enter Arena",
+      "/lobby",
+    ].forEach((copy) => expect(hero).toContain(copy));
+  });
+
   it("contains the required hackathon storytelling beats", () => {
     const page = read("app/page.tsx");
 
     [
-      "Signal Clash",
-      "Markets move.",
-      "You call the signal.",
       "Market Is Alive",
       "Not A Coin Flip",
       "Lock Your Call",
@@ -42,9 +53,7 @@ describe("landing page copy", () => {
       "Devnet Settlement",
       "Think you can read the next move?",
       "Enter Arena",
-      "View Demo",
       "/lobby",
-      "/arena",
     ].forEach((copy) => expect(page).toContain(copy));
   });
 });

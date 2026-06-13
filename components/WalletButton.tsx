@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { requestAirdrop, shortAddress } from "@/lib/solana/client";
+import { shortAddress } from "@/lib/solana/client";
 
 // Rendered client-only: the connect button's label differs between server and
 // client, which would otherwise cause a hydration mismatch.
@@ -20,7 +20,6 @@ export default function WalletButton() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const [balance, setBalance] = useState<number | null>(null);
-  const [airdropping, setAirdropping] = useState(false);
 
   // Fetch balance whenever the connected wallet changes. All setState calls
   // happen after an await, so the effect never sets state synchronously.
@@ -40,23 +39,6 @@ export default function WalletButton() {
     };
   }, [connection, publicKey]);
 
-  const onAirdrop = async () => {
-    if (!publicKey) return;
-    setAirdropping(true);
-    try {
-      await requestAirdrop(publicKey, 1);
-      const lamports = await connection.getBalance(publicKey);
-      setBalance(lamports / LAMPORTS_PER_SOL);
-    } catch (e) {
-      alert(
-        "Devnet airdrop failed (faucet is rate-limited). Try https://faucet.solana.com",
-      );
-      console.error(e);
-    } finally {
-      setAirdropping(false);
-    }
-  };
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       {publicKey && (
@@ -66,15 +48,6 @@ export default function WalletButton() {
           </span>
           {balance === null ? "-" : `${balance.toFixed(3)} SOL`}
         </span>
-      )}
-      {publicKey && (
-        <button
-          className="btn btn-ghost min-h-10 px-3 text-sm"
-          onClick={onAirdrop}
-          disabled={airdropping}
-        >
-          {airdropping ? "Airdropping..." : "Airdrop 1 SOL"}
-        </button>
       )}
       <WalletMultiButton />
     </div>

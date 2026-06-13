@@ -33,6 +33,14 @@
   --font-mono: var(--font-mono);
 }
 
+/* Official Solana palette tokens (additive) — emit :root vars + utilities. */
+@theme {
+  --color-sol-purple: #9945ff;
+  --color-sol-green: #14f195;
+  --color-sol-cyan: #03e1ff;
+  --color-canvas: #0a0b0f;
+}
+
 body {
   background:
     radial-gradient(1100px 600px at 80% -10%, rgba(29, 158, 117, 0.14), transparent 60%),
@@ -174,6 +182,7 @@ h4 {
   --canvas-deep: #04060a;
   --hud-line: rgba(0, 255, 163, 0.2);
   --scan: rgba(0, 255, 163, 0.035);
+  --gradient-solana: linear-gradient(135deg, #9945ff 0%, #14f195 100%);
 }
 
 .font-display {
@@ -816,6 +825,13 @@ html.lenis body {
   box-shadow: 0 0 14px rgba(3, 225, 255, 0.6);
 }
 
+/* ============================================================
+   Hero entry — full-screen landing intro
+   ============================================================ */
+.hero-grotesk {
+  font-family: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wave-path,
   .landing-pulse,
@@ -839,4 +855,148 @@ html.lenis body {
   html.lenis body {
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================================
+   Sitewide redesign — unify the product UI (lobby / room / arena /
+   tournament) with the landing: black canvas, Inter, Solana gradient,
+   minimal frosted cards, pill buttons. Appended last to override the
+   legacy cyber-arcade styling without rewriting each page.
+   ============================================================ */
+:root {
+  --surge: #14f195;
+  --purple: #9945ff;
+  --sol-gradient: linear-gradient(135deg, #9945ff 0%, #14f195 100%);
+  --hairline: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background: #000 !important;
+}
+
+/* Headings + controls on Inter to match the landing. */
+h1,
+h2,
+h3,
+h4,
+.font-display,
+.btn,
+.btn-primary,
+.arcade-btn,
+.metric-value {
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Page background: black with a faint Solana wash, no neon grid/diagonals. */
+.app-shell {
+  background:
+    radial-gradient(900px 600px at 50% -12%, rgba(153, 69, 255, 0.12), transparent 60%),
+    radial-gradient(760px 520px at 100% 8%, rgba(20, 241, 149, 0.08), transparent 55%),
+    #000 !important;
+}
+.app-shell::before,
+.app-shell::after {
+  display: none !important;
+}
+
+/* Frosted minimal surfaces (replaces glassy neon panels). */
+.card,
+.app-hero,
+.app-panel,
+.hud-panel,
+.glass,
+.story-panel {
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.card::before,
+.card::after,
+.app-hero::before,
+.app-hero::after,
+.app-panel::before,
+.app-panel::after,
+.hud-panel::before,
+.hud-panel::after,
+.story-panel::before,
+.story-panel::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Buttons → pills with the Solana gradient. */
+.btn {
+  clip-path: none !important;
+  border-radius: 9999px !important;
+  letter-spacing: normal !important;
+}
+.btn-primary {
+  background: var(--sol-gradient) !important;
+  color: #04060a !important;
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 28px rgba(20, 241, 149, 0.4) !important;
+}
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: var(--ink) !important;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Chips → subtle rounded pills. */
+.chip {
+  clip-path: none !important;
+  border-radius: 9999px !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Angular cut utility → simple rounding everywhere it is used. */
+.clip-corner {
+  clip-path: none !important;
+  border-radius: 12px !important;
+}
+
+/* Metric tiles + micro-labels. */
+.metric-tile {
+  border-radius: 12px !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+.metric-label,
+.hud-label {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.app-eyebrow {
+  color: #14f195 !important;
+}
+.app-kicker {
+  color: #14f195 !important;
+  border-color: rgba(20, 241, 149, 0.25) !important;
+  background: rgba(20, 241, 149, 0.08) !important;
+  border-radius: 9999px !important;
+}
+
+/* Arcade prediction buttons → rounded, keep semantic tints. */
+.arcade-btn,
+.arcade {
+  clip-path: none !important;
+  border-radius: 14px !important;
+}
+
+/* HUD timer/progress bar → rounded with the Solana fill. */
+.hud-bar {
+  clip-path: none !important;
+  border-radius: 9999px !important;
+}
+.hud-bar > span {
+  background: var(--sol-gradient) !important;
+  box-shadow: 0 0 14px rgba(20, 241, 149, 0.5) !important;
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Chakra_Petch, JetBrains_Mono, Inter } from "next/font/google";
+import { Geist, Chakra_Petch, JetBrains_Mono, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import CustomCursor from "@/components/CustomCursor";
@@ -27,6 +27,13 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+// Hero entry display face (spec-requested): Space Grotesk, scoped to the landing hero.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Signal Clash — PvP Market Prediction Arena",
   description:
@@ -41,7 +48,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${chakraPetch.variable} ${jetbrainsMono.variable} ${inter.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${chakraPetch.variable} ${jetbrainsMono.variable} ${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>
