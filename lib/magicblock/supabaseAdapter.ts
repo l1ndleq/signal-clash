@@ -45,7 +45,11 @@ export class SupabaseAdapter implements MagicBlockAdapter {
     void this.db
       .from(TABLE)
       .select("id,data")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[supabase] load rooms failed:", error.message);
+          return;
+        }
         if (!data) return;
         for (const row of data as { id: string; data: Room }[]) {
           this.cache.set(row.id, row.data);
@@ -66,7 +70,11 @@ export class SupabaseAdapter implements MagicBlockAdapter {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("[supabase] realtime channel:", status);
+        }
+      });
   }
 
   private notify(roomId: string): void {
@@ -179,7 +187,11 @@ export class SupabaseAdapter implements MagicBlockAdapter {
         .select("data")
         .eq("id", roomId)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) {
+            console.error(`[supabase] load room ${roomId} failed:`, error.message);
+            return;
+          }
           const row = data as { data?: Room } | null;
           if (row?.data) {
             this.cache.set(roomId, row.data);
