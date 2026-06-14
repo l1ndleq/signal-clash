@@ -204,11 +204,6 @@ export default function RoomPage() {
     await start();
   };
 
-  const onDepositAndStart = async () => {
-    const ok = await onDeposit();
-    if (ok) await beginMatch();
-  };
-
   const onStart = beginMatch;
 
   const onClaim = async () => {
@@ -334,7 +329,9 @@ export default function RoomPage() {
           depositing={depositing}
           depositUrl={depositUrl}
           depositErr={depositErr}
-          onDepositAndStart={onDepositAndStart}
+          isHost={room.creator === wallet}
+          canStart={Object.keys(room.players).length >= 2}
+          onDeposit={onDeposit}
           onStart={onStart}
         />
       ) : (
@@ -492,7 +489,9 @@ function ReadyPanel({
   depositing,
   depositUrl,
   depositErr,
-  onDepositAndStart,
+  isHost,
+  canStart,
+  onDeposit,
   onStart,
 }: {
   market: Market;
@@ -504,7 +503,9 @@ function ReadyPanel({
   depositing: boolean;
   depositUrl: string | null;
   depositErr: string | null;
-  onDepositAndStart: () => void;
+  isHost: boolean;
+  canStart: boolean;
+  onDeposit: () => void;
   onStart: () => void;
 }) {
   return (
@@ -543,8 +544,8 @@ function ReadyPanel({
             </span>
           </p>
           <p className="mt-1">
-            Paying the entry fee is a real devnet transfer. Empty seats can be
-            filled by bots for the demo.
+            Paying the entry fee is a real devnet transfer. The host starts the
+            match once at least two players have joined.
           </p>
         </div>
 
@@ -566,21 +567,34 @@ function ReadyPanel({
         )}
 
         <div className="mt-6 flex flex-col gap-2">
-          <button
-            className="btn btn-primary min-h-12 w-full pulse text-base"
-            onClick={onDepositAndStart}
-            disabled={depositing}
-          >
-            <BadgeDollarSign size={18} aria-hidden />
-            {depositing ? "Paying entry fee..." : `Pay ${entryFeeSol} SOL & Start`}
-          </button>
-          <button
-            className="rounded-lg px-4 py-3 text-center text-xs font-semibold text-[var(--ink-muted)] transition hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--ink)] disabled:opacity-45"
-            onClick={onStart}
-            disabled={depositing}
-          >
-            Skip deposit and start (demo only)
-          </button>
+          {!depositUrl && (
+            <button
+              className="btn btn-primary min-h-12 w-full text-base"
+              onClick={onDeposit}
+              disabled={depositing}
+            >
+              <BadgeDollarSign size={18} aria-hidden />
+              {depositing
+                ? "Paying entry fee..."
+                : `Pay ${entryFeeSol} SOL entry fee`}
+            </button>
+          )}
+          {isHost ? (
+            <button
+              className="btn btn-primary min-h-12 w-full pulse text-base"
+              onClick={onStart}
+              disabled={depositing || !canStart}
+            >
+              <Swords size={18} aria-hidden />
+              {canStart
+                ? "Start match"
+                : `Waiting for an opponent (${players}/${maxPlayers})`}
+            </button>
+          ) : (
+            <p className="rounded-lg border border-[var(--hairline)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-center text-sm text-[var(--ink-muted)]">
+              Waiting for the host to start the match…
+            </p>
+          )}
         </div>
       </div>
     </div>
