@@ -5,6 +5,7 @@ import { ArrowRight, BadgeDollarSign, Radio, Trophy } from "lucide-react";
 import type { Player, Room } from "@/lib/game/types";
 import { solFromLamports } from "@/lib/config";
 import { paidPlacesForField, rankStandings } from "@/lib/game/tournament";
+import { shortAddress } from "@/lib/solana/client";
 
 export interface PayoutState {
   claiming: boolean;
@@ -74,7 +75,7 @@ export default function ResultCard({
             }}
           >
             <div className="text-sm font-semibold">
-              {p.wallet === myWallet ? "You" : p.displayName ?? "Bot"}
+              {p.wallet === myWallet ? "You" : p.displayName ?? shortAddress(p.wallet, 4)}
             </div>
             <div className="font-num text-4xl font-black">{p.score}</div>
           </div>

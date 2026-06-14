@@ -41,6 +41,8 @@ export interface Player {
   score: number;
   streak: number;
   predictions: Prediction[];
+  /** True once this player has paid the entry fee on-chain. */
+  deposited?: boolean;
 }
 
 export interface Room {

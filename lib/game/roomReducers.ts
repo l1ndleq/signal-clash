@@ -130,6 +130,13 @@ export function updateScore(
   return r;
 }
 
+export function markDeposited(room: Room, player: string): Room {
+  const r = structuredClone(room);
+  const p = r.players[player];
+  if (p) p.deposited = true;
+  return r;
+}
+
 export function finalizeRoom(room: Room, winner?: string, isDraw?: boolean): Room {
   const r = structuredClone(room);
   r.status = "finished";

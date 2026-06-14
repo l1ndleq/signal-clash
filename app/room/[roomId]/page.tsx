@@ -28,6 +28,7 @@ import ResultCard, { type PayoutState } from "@/components/ResultCard";
 import TradingViewChart from "@/components/TradingViewChart";
 import { useMatch } from "@/lib/state/useMatch";
 import { lobbyEngine } from "@/lib/game/instances";
+import { magicBlock } from "@/lib/magicblock";
 import { MARKETS, formatPrice } from "@/lib/game/markets";
 import type { Market, Round } from "@/lib/game/types";
 import { solFromLamports } from "@/lib/config";
@@ -181,6 +182,17 @@ export default function RoomPage() {
   const myPrediction = round?.predictions.find((p) => p.player === wallet);
   const roundActive = view.phase === "round-active";
 
+  // Start is allowed only when >=2 players have joined AND everyone has paid.
+  const playerList = Object.values(room.players);
+  const canStart =
+    playerList.length >= 2 && playerList.every((p) => p.deposited);
+  const startLabel =
+    playerList.length < 2
+      ? `Waiting for an opponent (${playerList.length}/${room.maxPlayers})`
+      : canStart
+        ? "Start match"
+        : "Waiting for all players to pay the entry fee";
+
   const onDeposit = async (): Promise<boolean> => {
     if (!publicKey || depositUrl) return !!depositUrl;
     setDepositing(true);
@@ -195,6 +207,7 @@ export default function RoomPage() {
           sendTransaction(tx, conn),
       });
       setDepositUrl(res.explorerUrl);
+      if (wallet) await magicBlock.markDeposited(roomId, wallet);
       return true;
     } catch (e) {
       setDepositErr(
@@ -343,7 +356,8 @@ export default function RoomPage() {
           depositUrl={depositUrl}
           depositErr={depositErr}
           isHost={room.creator === wallet}
-          canStart={Object.keys(room.players).length >= 2}
+          canStart={canStart}
+          startLabel={startLabel}
           onDeposit={onDeposit}
           onStart={onStart}
         />
@@ -504,6 +518,7 @@ function ReadyPanel({
   depositErr,
   isHost,
   canStart,
+  startLabel,
   onDeposit,
   onStart,
 }: {
@@ -518,6 +533,7 @@ function ReadyPanel({
   depositErr: string | null;
   isHost: boolean;
   canStart: boolean;
+  startLabel: string;
   onDeposit: () => void;
   onStart: () => void;
 }) {
@@ -599,9 +615,7 @@ function ReadyPanel({
               disabled={depositing || !canStart}
             >
               <Swords size={18} aria-hidden />
-              {canStart
-                ? "Start match"
-                : `Waiting for an opponent (${players}/${maxPlayers})`}
+              {startLabel}
             </button>
           ) : (
             <p className="rounded-lg border border-[var(--hairline)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-center text-sm text-[var(--ink-muted)]">

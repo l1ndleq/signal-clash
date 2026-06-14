@@ -120,6 +120,10 @@ export class SupabaseAdapter implements MagicBlockAdapter {
     return this.commit(reduce.finalizeRoom(this.require(roomId), winner, isDraw));
   }
 
+  async markDeposited(roomId: string, player: string): Promise<void> {
+    await this.commit(reduce.markDeposited(this.require(roomId), player));
+  }
+
   async commitFinalResult(roomId: string): Promise<string> {
     return `mb-commit:${roomId}:${Date.now()}`;
   }

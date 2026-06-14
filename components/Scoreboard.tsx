@@ -102,7 +102,7 @@ export default function Scoreboard({
                       #{index + 1}
                     </span>
                     <span className="truncate font-display text-lg font-bold">
-                      {isMe ? "You" : p.displayName ?? "Signal Bot"}
+                      {isMe ? "You" : p.displayName ?? shortAddress(p.wallet, 4)}
                     </span>
                     {isLeader && (
                       <Crown size={15} className="text-[var(--surge)]" aria-hidden />

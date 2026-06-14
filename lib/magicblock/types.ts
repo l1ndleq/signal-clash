@@ -55,6 +55,8 @@ export interface MagicBlockAdapter {
     displayName?: string,
   ): Promise<Room>;
   finalizeRoom(roomId: string, winner?: string, isDraw?: boolean): Promise<Room>;
+  /** Mark a player as having paid the entry fee on-chain. */
+  markDeposited(roomId: string, player: string): Promise<void>;
   /** Commit the final, scored room state back to the base layer. */
   commitFinalResult(roomId: string): Promise<string>;
 

@@ -141,7 +141,7 @@ export default function TournamentLeaderboard({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="truncate font-display text-sm font-bold">
-                    {isMe ? "You" : s.displayName ?? "Signal Bot"}
+                    {isMe ? "You" : s.displayName ?? shortAddress(s.wallet, 4)}
                   </span>
                   {s.rank === 1 && (
                     <Crown size={13} style={{ color: MEDAL[0] }} aria-hidden />

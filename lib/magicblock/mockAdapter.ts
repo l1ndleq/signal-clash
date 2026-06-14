@@ -187,6 +187,13 @@ export class LocalMagicBlockAdapter implements MagicBlockAdapter {
     return structuredClone(room);
   }
 
+  async markDeposited(roomId: string, player: string): Promise<void> {
+    const room = this.requireRoom(roomId);
+    const p = room.players[player];
+    if (p) p.deposited = true;
+    this.emit(roomId);
+  }
+
   async commitFinalResult(roomId: string): Promise<string> {
     // In production this commits ER state to Solana and undelegates the PDA.
     const room = this.requireRoom(roomId);
