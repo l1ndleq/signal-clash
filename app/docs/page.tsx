@@ -15,6 +15,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: "architecture", label: "Architecture" },
   { id: "magicblock", label: "MagicBlock seam" },
   { id: "settlement", label: "Devnet & safety" },
+  { id: "security", label: "Security model" },
   { id: "faq", label: "FAQ" },
 ];
 
@@ -256,6 +257,67 @@ npm run dev                      # http://localhost:3000`}</Code>
                 program (room PDA custody, payout gated on the committed result) is
                 the planned replacement.
               </Callout>
+            </Section>
+
+            <Section id="security" title="Security model">
+              <P>
+                Scope is <B>devnet only, non-custodial</B> — no real funds are
+                ever at risk, the deliberate boundary for this MVP.
+              </P>
+              <h3 className="mt-5 text-lg font-medium text-white">
+                Protected today
+              </h3>
+              <ul className="mt-3 grid gap-2 text-white/70">
+                <li>
+                  <B>Secrets:</B> nothing secret is committed; only{" "}
+                  <Mono>NEXT_PUBLIC_*</Mono> values reach the client.
+                </li>
+                <li>
+                  <B>Wallet:</B> non-custodial — the app never sees a private key
+                  and never signs on your behalf; every tx is wallet-approved.
+                </li>
+                <li>
+                  <B>Vault:</B> <Mono>settle</Mono> pays only recorded depositors,
+                  each place once, rake always to the treasury, no double-settle,
+                  abandonment <Mono>void</Mono> refunds everyone; overflow checks on.
+                </li>
+                <li>
+                  <B>App/transport:</B> security headers (CSP, frame-deny, nosniff,
+                  HSTS), React output escaping, parameterized Supabase queries,
+                  row integrity constraints (deletes denied).
+                </li>
+              </ul>
+              <h3 className="mt-5 text-lg font-medium text-white">
+                Known trade-offs (devnet, by design)
+              </h3>
+              <ul className="mt-3 grid gap-2 text-white/70">
+                <li>
+                  Settlement is <B>authority-trusted</B>: the result is asserted
+                  off-chain, so the program bounds amounts/places/depositors but
+                  not who actually won.
+                </li>
+                <li>
+                  Realtime room state is written with the public anon key; clients
+                  can write room/score state (integrity-guarded, not authenticated).
+                </li>
+                <li>Predictions aren&apos;t cryptographically hidden before lock.</li>
+              </ul>
+              <h3 className="mt-5 text-lg font-medium text-white">
+                Production roadmap
+              </h3>
+              <ul className="mt-3 grid gap-2 text-white/70">
+                <li>
+                  <B>Trustless target:</B> run scoring + round lifecycle on-chain
+                  via <B>MagicBlock Ephemeral Rollups</B>, price from the{" "}
+                  <B>Pyth</B> oracle, and gate <Mono>settle</Mono> on the committed
+                  on-chain result; commit-reveal for moves.
+                </li>
+                <li>
+                  <B>Interim:</B> an authoritative server verifies wallet-signed
+                  inputs, computes the score, and signs the result the vault
+                  requires; RLS goes read-only for clients.
+                </li>
+              </ul>
             </Section>
 
             <Section id="faq" title="FAQ">

@@ -102,6 +102,49 @@ Pairs: **SOL/USD, BTC/USD, ETH/USD** (chosen per room).
 > human's entry fee is deposited on-chain; the bot's stake is represented at the
 > game layer (shown in the prize-pool display).
 
+## Security model
+
+**Scope:** devnet only, non-custodial. No real funds are ever at risk, which is
+the deliberate boundary for this MVP.
+
+**What's protected today**
+
+- **Keys/secrets:** nothing secret is committed (`.env*`, `treasury-devnet.json`,
+  `*-keypair.json` are git-ignored); only `NEXT_PUBLIC_*` values reach the client.
+- **Wallet:** non-custodial — the app never sees a private key and never signs on
+  the user's behalf. Every transaction is wallet-approved.
+- **On-chain vault:** `settle` pays only recorded depositors, each place/winner
+  once, rake + unpaid shares always to the fixed treasury, no double-settle, and
+  an abandonment `void` refunds every depositor. `overflow-checks = true`.
+- **App/transport:** security headers (CSP subset, `X-Frame-Options: DENY`,
+  `nosniff`, `Referrer-Policy`, `HSTS`, `Permissions-Policy`), React's built-in
+  output escaping, parameterized Supabase queries, and Supabase row integrity
+  constraints (id consistency + size cap; deletes denied by RLS).
+
+**Known trade-offs (accepted for a devnet MVP — by design)**
+
+- **Settlement is authority-trusted.** The match result is asserted off-chain;
+  the program bounds *amounts/places/depositors* but not *who actually won*, so a
+  player could in principle claim the pot. (Bounded to devnet funds.)
+- **Realtime room state is written with the public anon key**, so clients can
+  write room/score state; integrity constraints limit griefing but not
+  authenticity.
+- **Predictions live in shared state** and are not cryptographically hidden from
+  the opponent before lock.
+
+**How these close in production**
+
+- *Trustless target:* run round lifecycle + scoring on-chain via **MagicBlock
+  Ephemeral Rollups**, take price from the **Pyth** on-chain oracle, and gate
+  vault `settle` on the committed on-chain result. Add commit-reveal for moves.
+- *Interim:* an authoritative server (Supabase Edge Functions) that verifies
+  wallet-signed inputs, computes the score, and signs the result; the vault
+  `settle` then requires that server signature. RLS goes read-only for clients.
+
+**Dependencies:** lockfile committed; `npm audit` findings are transitive
+(`postcss` inside Next, `uuid` inside `@solana/web3.js`) with no non-breaking fix
+and no exploitable path in this app.
+
 ## Solana devnet usage
 
 - Cluster: **devnet** (`https://api.devnet.solana.com`, overridable via
