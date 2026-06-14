@@ -30,7 +30,7 @@ export default function LobbyPage() {
   const { publicKey } = useWallet();
   const wallet = publicKey?.toBase58() ?? null;
 
-  const { rooms, ensureSeeded, createRoom, createTournament, joinRoom } =
+  const { rooms, ensureSeeded, refresh, createRoom, createTournament, joinRoom } =
     useLobbyStore();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<CreateMode>("room");
@@ -38,7 +38,11 @@ export default function LobbyPage() {
 
   useEffect(() => {
     void ensureSeeded();
-  }, [ensureSeeded]);
+    // Poll so the list reflects rooms filling/starting on other clients
+    // (a full room drops out of the available list).
+    const id = setInterval(refresh, 2500);
+    return () => clearInterval(id);
+  }, [ensureSeeded, refresh]);
 
   const onCreateRoom = async (
     market: Market,
@@ -103,7 +107,10 @@ export default function LobbyPage() {
     .filter((r) => r.kind === "tournament" && r.status !== "finished")
     .sort((a, b) => (a.startsAt ?? 0) - (b.startsAt ?? 0));
   const openRooms = rooms.filter(
-    (r) => r.kind !== "tournament" && r.status !== "finished",
+    (r) =>
+      r.kind !== "tournament" &&
+      r.status === "waiting" &&
+      Object.keys(r.players).length < r.maxPlayers,
   );
   const liveCount = rooms.filter((r) => r.status === "active").length;
   const prizePoolSol = useMemo(() => {
