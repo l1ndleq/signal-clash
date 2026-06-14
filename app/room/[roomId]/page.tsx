@@ -105,6 +105,19 @@ export default function RoomPage() {
     });
   }, [wallet, view?.phase, view?.room]);
 
+  // Auto-join: a connected wallet that opens a waiting, non-full room they're
+  // not in is added as a player (so a shared room link registers the opponent).
+  const joinedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const room = view?.room;
+    if (!wallet || !room || room.status !== "waiting") return;
+    if (room.players[wallet]) return;
+    if (Object.keys(room.players).length >= room.maxPlayers) return;
+    if (joinedRef.current === room.id) return;
+    joinedRef.current = room.id;
+    void lobbyEngine.joinRoom(roomId, wallet);
+  }, [wallet, view?.room, roomId]);
+
   if (!wallet) {
     return (
       <RoomShell>

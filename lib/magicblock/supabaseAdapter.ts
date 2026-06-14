@@ -150,11 +150,13 @@ export class SupabaseAdapter implements MagicBlockAdapter {
   // --- reads / subscriptions ---
 
   getRoom(roomId: string): Room | undefined {
+    this.ensureStarted();
     const room = this.cache.get(roomId);
     return room ? structuredClone(room) : undefined;
   }
 
   listRooms(): Room[] {
+    this.ensureStarted();
     return Array.from(this.cache.values()).map((r) => structuredClone(r));
   }
 
