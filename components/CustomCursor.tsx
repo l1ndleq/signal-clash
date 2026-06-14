@@ -50,7 +50,7 @@ export default function CustomCursor() {
       {/* Crosshair arms (lagged) */}
       <motion.div
         style={{ x: ringX, y: ringY }}
-        className="pointer-events-none fixed left-0 top-0 z-[100]"
+        className="pointer-events-none fixed left-0 top-0 z-[2147483647]"
         animate={{ opacity: hovering ? 1 : 0.7 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
       >
@@ -103,7 +103,7 @@ export default function CustomCursor() {
       {/* Center dot (instant) */}
       <motion.div
         style={{ x, y }}
-        className="pointer-events-none fixed left-0 top-0 z-[100]"
+        className="pointer-events-none fixed left-0 top-0 z-[2147483647]"
       >
         <div
           className="h-[3px] w-[3px] -translate-x-1/2 -translate-y-1/2"
